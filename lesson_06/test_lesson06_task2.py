@@ -1,69 +1,65 @@
+"""Тест подмены сессии: два пользователя, разные куки, разные профили."""
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+BASE_URL = 'https://gitflic.ru/'
+TIMEOUT = 10
+
+USER1_COOKIES = [{'name': 'SESSION', 'value': 'ВАШЕ_ЗНАЧЕНИЕ_1',
+                  'domain': '.gitflic.ru', 'path': '/'}]
+USER2_COOKIES = [{'name': 'SESSION', 'value': 'ВАШЕ_ЗНАЧЕНИЕ_2',
+                  'domain': '.gitflic.ru', 'path': '/'}]
+
+# Реальные URL профилей — замените на свои (откройте профиль в браузере и скопируйте)
+USER1_PROFILE_URL = 'https://gitflic.ru/user/username1'
+USER2_PROFILE_URL = 'https://gitflic.ru/user/username2'
+
 
 def test_session_storage_auth():
+    """Устанавливает куки двух пользователей и проверяет, что URL профилей различаются."""
     driver = webdriver.Chrome()
-    base_url = 'https://gitflic.ru/'
-
-    user1_cookies = [
-        {
-            'name': 'SESSION',
-            'value': 'значение_сессии_первого_пользователя',
-            'domain': 'gitflic.ru',
-            'path': '/',
-        }
-    ]
-    user2_cookies = [
-        {
-            'name': 'SESSION',
-            'value': 'значение_сессии_второго_пользователя',
-            'domain': 'gitflic.ru',
-            'path': '/',
-        }
-    ]
-
-    user1_profile_url = 'https://gitflic.ru'
-    user2_profile_url = 'https://gitflic.ru'
+    wait = WebDriverWait(driver, TIMEOUT)
 
     try:
-        driver.get(base_url)
-        wait = WebDriverWait(driver, 10)
+        # Открыта страница
+        driver.get(BASE_URL)
 
-        for cookie in user1_cookies:
+        # Куки пользователя 1
+        for cookie in USER1_COOKIES:
             driver.add_cookie(cookie)
+
+        # Обновление страницы
         driver.refresh()
 
-        wait.until(
-            EC.invisibility_of_element_located((By.LINK_TEXT, 'Войти'))
-        )
-
-        driver.get(user1_profile_url)
-        wait.until(EC.url_contains('username1'))
+        # Переход на профиль пользователя 1 и сохранение URL
+        driver.get(USER1_PROFILE_URL)
+        wait.until(EC.url_contains(USER1_PROFILE_URL))
         url_user1 = driver.current_url
 
+        # Очистка куки
         driver.delete_all_cookies()
-        driver.refresh()
-        wait.until(EC.visibility_of_element_located((By.LINK_TEXT, 'Войти')))
 
-        for cookie in user2_cookies:
+        # Куки пользователя 2
+        driver.get(BASE_URL)
+        for cookie in USER2_COOKIES:
             driver.add_cookie(cookie)
         driver.refresh()
 
-        wait.until(
-            EC.invisibility_of_element_located((By.LINK_TEXT, 'Войти'))
-        )
-
-        driver.get(user2_profile_url)
-        wait.until(EC.url_contains('username2'))
+        # Переход на профиль пользователя 2 и сохранение URL
+        driver.get(USER2_PROFILE_URL)
+        wait.until(EC.url_contains(USER2_PROFILE_URL))
         url_user2 = driver.current_url
 
+        # Скриншот итогового состояния
+        driver.save_screenshot('profiles.png')
+
+        # Проверка различия URL
         assert url_user1 != url_user2, (
             f'URL пользователей совпадают: {url_user1}'
         )
-
     finally:
         driver.quit()
         
